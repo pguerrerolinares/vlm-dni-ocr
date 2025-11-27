@@ -1,0 +1,3 @@
+# This project now uses pyproject.toml for dependency management.
+# Installing in editable mode pulls in the default (core) dependencies.
+-e .

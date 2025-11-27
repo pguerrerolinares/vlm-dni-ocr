@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+
+# Caches & tooling artifacts
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# IDE / editor settings
+.idea/
+.vscode/
+
+# Local data and model artifacts
+data/output/
+models/
+Qwen3-VL-8B-Instruct/
+
+# Misc
+*.log
+.DS_Store
