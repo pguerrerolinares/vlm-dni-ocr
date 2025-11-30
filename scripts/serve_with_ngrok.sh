@@ -33,7 +33,7 @@ cleanup() {
 }
 start_server() {
   echo "Starting DNI pipeline server on http://${SERVER_HOST}:${SERVER_PORT} ..."
-  "${PYTHON_BIN}" -m dni_pipeline.server --host "${SERVER_HOST}" --port "${SERVER_PORT}" "$@" &
+  "${PYTHON_BIN}" -m dni_pipeline.adapters.server --host "${SERVER_HOST}" --port "${SERVER_PORT}" "$@" &
   SERVER_PID=$!
   sleep 2
   if ! ps -p "${SERVER_PID}" >/dev/null 2>&1; then

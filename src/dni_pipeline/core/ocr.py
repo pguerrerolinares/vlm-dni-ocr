@@ -12,7 +12,7 @@ from doctr.io import DocumentFile
 from doctr.models import ocr_predictor
 from PIL import Image
 
-from .logging_service import logging_service
+from ..logging_service import logging_service
 
 LOGGER = logging_service.get_logger(__name__)
 

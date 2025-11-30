@@ -5,7 +5,7 @@ import json
 import re
 from typing import Any, Dict, List
 
-from .logging_service import logging_service
+from ..logging_service import logging_service
 
 LOGGER = logging_service.get_logger(__name__)
 EXPECTED_FIELDS = (

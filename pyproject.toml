@@ -38,8 +38,8 @@ dev = [
 ]
 
 [project.scripts]
-dni-pipeline = "dni_pipeline.cli:main"
-dni-pipeline-server = "dni_pipeline.server:main"
+dni-pipeline = "dni_pipeline.adapters.cli:main"
+dni-pipeline-server = "dni_pipeline.adapters.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

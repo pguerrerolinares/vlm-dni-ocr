@@ -1,7 +1,7 @@
 """Unit tests for postprocess helpers."""
 from __future__ import annotations
 
-from dni_pipeline.postprocess import (
+from dni_pipeline.core.postprocess import (
     build_cleaner_prompt,
     finalize_cleaner_result,
     parse_cleaner_output,

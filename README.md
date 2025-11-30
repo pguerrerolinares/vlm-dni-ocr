@@ -44,19 +44,47 @@ El resultado de esta fase alimenta la orientación automática, la vista OCR, la
 ├── src/
 │   └── dni_pipeline/
 │       ├── __init__.py
-│       ├── api.py
-│       ├── cli.py
-│       ├── image_preprocessing.py
-│       ├── logging_service.py
-│       ├── ocr_doctr.py
-│       ├── postprocess.py
-│       ├── server.py
-│       ├── ui.py
-│       ├── vlm_qwen.py
-│       └── workflow.py
+│       ├── adapters/
+│       │   ├── api.py            # FastAPI + Gradio UI
+│       │   ├── cli.py            # CLI de extracción
+│       │   ├── server.py         # Entrypoint uvicorn
+│       │   └── ui.py             # Componentes Gradio
+│       ├── core/
+│       │   ├── preprocessing.py  # Normalización, recortes, métricas
+│       │   ├── ocr.py            # Envoltura de docTR
+│       │   ├── vlm.py            # Llamadas a Qwen3-VL-8B
+│       │   └── postprocess.py    # Cleaner y validaciones
+│       ├── services/
+│       │   └── pipeline.py       # Orquestación de etapas
+│       ├── config.py             # Settings tipados del pipeline
+│       └── logging_service.py
 └── tests/
     ├── test_image_preprocessing.py
-    └── test_ocr_prompt.py
+    ├── test_ocr_prompt.py
+    └── test_postprocess.py
+```
+
+```mermaid
+graph TD
+    A[src/] --> B[dni_pipeline/]
+    B --> B1[adapters/]
+    B1 --> B1a[cli.py]
+    B1 --> B1b[api.py]
+    B1 --> B1c[server.py]
+    B1 --> B1d[ui.py]
+    B --> B2[core/]
+    B2 --> B2a[preprocessing.py]
+    B2 --> B2b[ocr.py]
+    B2 --> B2c[vlm.py]
+    B2 --> B2d[postprocess.py]
+    B --> B3[services/]
+    B3 --> B3a[pipeline.py]
+    B --> B4[config.py]
+    B --> B5[logging_service.py]
+    A --> C[tests/]
+    C --> C1[test_image_preprocessing.py]
+    C --> C2[test_ocr_prompt.py]
+    C --> C3[test_postprocess.py]
 ```
 
 ## Requisitos

@@ -7,7 +7,7 @@ from typing import Iterable, Optional
 import uvicorn
 
 from .api import app
-from .logging_service import logging_service
+from ..logging_service import logging_service
 
 
 def build_parser() -> argparse.ArgumentParser:

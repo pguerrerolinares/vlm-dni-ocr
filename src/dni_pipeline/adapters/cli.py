@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 from typing import Iterable, Optional
 
-from . import DEFAULT_OUTPUT_DIR, DEFAULT_QWEN_MODEL_PATH
-from .logging_service import logging_service
-from .workflow import (
+from .. import DEFAULT_OUTPUT_DIR, DEFAULT_QWEN_MODEL_PATH
+from ..config import PipelineSettings
+from ..logging_service import logging_service
+from ..services.pipeline import (
     iter_image_paths,
     process_directory,
     process_image,
@@ -106,17 +107,18 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     if args.output_dir:
         output_dir.mkdir(parents=True, exist_ok=True)
 
+    settings = PipelineSettings(
+        ocr_max_side=args.ocr_max_side,
+        vlm_size=args.vlm_size,
+        max_new_tokens=args.max_new_tokens,
+        model_path=args.model_path,
+        enable_card_crop=args.enable_card_crop,
+        processed_image_dir=output_dir,
+    )
+
     exit_code = 0
     for image_path in image_paths:
-        record = process_image(
-            image_path=image_path,
-            ocr_max_side=args.ocr_max_side,
-            vlm_size=args.vlm_size,
-            max_new_tokens=args.max_new_tokens,
-            model_path=args.model_path,
-            enable_card_crop=args.enable_card_crop,
-            processed_image_dir=output_dir,
-        )
+        record = process_image(image_path=image_path, settings=settings)
         print(json.dumps(record, ensure_ascii=False))
         if output_dir:
             output_name = image_path.with_suffix(".json").name

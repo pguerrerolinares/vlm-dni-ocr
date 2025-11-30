@@ -9,8 +9,8 @@ import gradio as gr
 import httpx
 from gradio_client import utils as gradio_client_utils
 
-from . import DEFAULT_QWEN_MODEL_PATH
-from .logging_service import logging_service
+from .. import DEFAULT_QWEN_MODEL_PATH
+from ..logging_service import logging_service
 
 LOGGER = logging_service.get_logger("dni_pipeline.ui")
 

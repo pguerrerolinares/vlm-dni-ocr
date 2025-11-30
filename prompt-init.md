@@ -624,12 +624,12 @@ El agente debe proponer y crear una estructura similar a:
 dni_vlm_pipeline/
 ├── AGENT.md                  # (este fichero, no lo modifiques)
 ├── requirements.txt          # dependencias mínimas necesarias
-├── dni_pipeline.py           # punto de entrada CLI
-├── preprocessing.py          # funciones de preprocesado de imagen
-├── ocr_doctr.py              # wrapper de docTR para OCR
-├── vlm_qwen.py               # lógica de llamada a Qwen3-VL-8B
-├── postprocess.py            # parseo JSON + normalización + validación
-└── README.md                 # instrucciones básicas de uso
+├── src/dni_pipeline/
+│   ├── adapters/             # CLI, API y server
+│   ├── core/                 # preprocessing/ocr/vlm/postprocess
+│   ├── services/             # pipeline de orquestación
+│   ├── config.py             # settings del pipeline
+│   └── README.md             # instrucciones básicas de uso
 ```
 
 No es obligatorio usar exactamente estos nombres, pero sí se debe mantener una **separación clara** entre:
@@ -796,7 +796,7 @@ El objetivo de esta sección es que, con `README.md` + `requirements.txt`, un us
 * No mezclar demasiadas responsabilidades en una sola función.
 
   * Preprocesado, OCR, generación del prompt, inferencia, parseo y normalización deben estar separados.
-* Cada módulo (`preprocessing.py`, `ocr_doctr.py`, `vlm_qwen.py`, `postprocess.py`) debe tener una responsabilidad principal clara.
+* Cada módulo núcleo (`core/preprocessing.py`, `core/ocr.py`, `core/vlm.py`, `core/postprocess.py`) debe tener una responsabilidad principal clara.
 * El script `dni_pipeline.py` debe centrarse en:
 
   * parsear argumentos de línea de comandos,

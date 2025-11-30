@@ -11,7 +11,7 @@ def main() -> int:
     if str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
 
-    from dni_pipeline.server import main as server_main  # pylint: disable=import-error
+    from dni_pipeline.adapters.server import main as server_main  # pylint: disable=import-error
 
     return server_main()
 

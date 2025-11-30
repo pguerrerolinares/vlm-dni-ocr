@@ -11,11 +11,10 @@ def main() -> int:
     if str(src_dir) not in sys.path:
         sys.path.insert(0, str(src_dir))
 
-    from dni_pipeline.cli import main as cli_main  # pylint: disable=import-error
+    from dni_pipeline.adapters.cli import main as cli_main  # pylint: disable=import-error
 
     return cli_main()
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -1,7 +1,7 @@
 """Unit tests for OCR prompt block construction."""
 from __future__ import annotations
 
-from dni_pipeline.ocr_doctr import OcrItem, build_ocr_block
+from dni_pipeline.core.ocr import OcrItem, build_ocr_block
 
 
 def test_build_ocr_block_filters_low_confidence_tokens() -> None:

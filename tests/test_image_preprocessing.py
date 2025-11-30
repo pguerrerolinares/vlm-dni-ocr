@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from PIL import Image, ImageDraw
 
-from dni_pipeline.image_preprocessing import (
+from dni_pipeline.core.preprocessing import (
     _document_bbox_and_coverage,
     DOC_WARP_TARGET_SIZE,
     normalize_document_view,

@@ -11,9 +11,10 @@ from typing import Optional, Any, Dict
 from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 
-from . import DEFAULT_QWEN_MODEL_PATH
-from .logging_service import logging_service
-from .workflow import cleanup_resources, process_image
+from .. import DEFAULT_QWEN_MODEL_PATH
+from ..config import PipelineSettings
+from ..logging_service import logging_service
+from ..services.pipeline import cleanup_resources, process_image
 from .ui import create_ui
 
 LOGGER = logging_service.get_logger("dni_pipeline.api")
@@ -85,14 +86,17 @@ async def extract_dni(
         background_tasks.add_task(_safe_unlink, tmp_path)
 
     try:
-        record: Dict[str, Any] = await _run_blocking(
-            process_image,
-            image_path=tmp_path,
+        settings = PipelineSettings(
             ocr_max_side=ocr_max_side,
             vlm_size=vlm_size,
             max_new_tokens=max_new_tokens,
             model_path=model_path,
             enable_card_crop=enable_card_crop,
+        )
+        record: Dict[str, Any] = await _run_blocking(
+            process_image,
+            image_path=tmp_path,
+            settings=settings,
         )
     except Exception as exc:
         LOGGER.exception("Pipeline execution failed for %s: %s", tmp_path, exc)

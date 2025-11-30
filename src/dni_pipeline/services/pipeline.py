@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List
 
-from .image_preprocessing import prepare_images, preprocess_for_ocr
-from .logging_service import logging_service
-from .ocr_doctr import (
+from ..config import PipelineSettings
+from ..core.preprocessing import prepare_images
+from ..logging_service import logging_service
+from ..core.ocr import (
     OcrTextLine,
     build_ocr_lines,
     render_ocr_block,
@@ -15,19 +16,19 @@ from .ocr_doctr import (
     sort_ocr_items,
     unload_model as unload_ocr,
 )
-from .postprocess import (
+from ..core.postprocess import (
     build_cleaner_prompt,
     finalize_cleaner_result,
     parse_cleaner_output,
     parse_model_output,
 )
-from .vlm_qwen import (
+from ..core.vlm import (
     run_qwen_cleaner,
     run_qwen_vlm,
     unload_model as unload_vlm,
 )
 
-LOGGER = logging_service.get_logger("dni_pipeline.workflow")
+LOGGER = logging_service.get_logger("dni_pipeline.services.pipeline")
 DEFAULT_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".webp"}
 LOW_FOCUS_REJECT_THRESHOLD = 25.0
 
@@ -39,18 +40,10 @@ def iter_image_paths(path: Path) -> Iterable[Path]:
             yield item
 
 
-def process_image(
-    image_path: Path,
-    *,
-    ocr_max_side: int,
-    vlm_size: int,
-    max_new_tokens: int,
-    model_path: str,
-    enable_card_crop: bool = True,
-    processed_image_dir: Optional[Path] = None,
-) -> Dict[str, Any]:
+def process_image(image_path: Path, settings: PipelineSettings) -> Dict[str, Any]:
     """Process a single DNI image end-to-end and return the normalised record."""
     LOGGER.info("Processing %s", image_path)
+    processed_image_dir = settings.processed_image_dir
     try:
         with logging_service.log_stage(
             "prepare_images",
@@ -58,7 +51,10 @@ def process_image(
             extra={"image": image_path.name},
         ):
             prepared = prepare_images(
-                image_path, ocr_max_side, vlm_size, enable_card_crop=enable_card_crop
+                image_path,
+                settings.ocr_max_side,
+                settings.vlm_size,
+                enable_card_crop=settings.enable_card_crop,
             )
             ocr_image = prepared.ocr_image
             vlm_image = prepared.vlm_image
@@ -126,13 +122,13 @@ def process_image(
         with logging_service.log_stage(
             "qwen_inference",
             logger=LOGGER,
-            extra={"image": image_path.name, "max_new_tokens": max_new_tokens},
+            extra={"image": image_path.name, "max_new_tokens": settings.max_new_tokens},
         ):
             raw_model_output = run_qwen_vlm(
                 vlm_image,
                 ocr_block,
-                max_new_tokens=max_new_tokens,
-                model_id=model_path,
+                max_new_tokens=settings.max_new_tokens,
+                model_id=settings.model_path,
             )
             LOGGER.debug("Raw model output: %s", raw_model_output)
     except Exception as exc:
@@ -162,7 +158,7 @@ def process_image(
 
         cleaner_raw_output = ""
         cleaner_data: Dict[str, Any] = {"raw_output": ""}
-        cleaner_max_tokens = min(2048, max(512, max_new_tokens * 4))
+        cleaner_max_tokens = min(2048, max(512, settings.max_new_tokens * 4))
 
         for attempt in range(2):
             prompt_to_use = cleaner_prompt
@@ -176,7 +172,7 @@ def process_image(
                 cleaner_raw_output = run_qwen_cleaner(
                     clean_prompt=prompt_to_use,
                     max_new_tokens=cleaner_max_tokens,
-                    model_id=model_path,
+                    model_id=settings.model_path,
                 )
                 LOGGER.debug("Cleaner raw output (attempt %s): %s", attempt + 1, cleaner_raw_output)
             except Exception as exc:  # pragma: no cover - defensive

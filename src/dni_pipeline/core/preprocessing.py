@@ -10,8 +10,8 @@ import cv2
 import numpy as np
 from PIL import Image, ImageEnhance, ImageOps, ImageStat
 
-from .logging_service import logging_service
-from .ocr_doctr import OcrItem, run_doctr_ocr
+from ..logging_service import logging_service
+from .ocr import OcrItem, run_doctr_ocr
 
 LOGGER = logging_service.get_logger(__name__)
 ORIENTATION_ANGLES = (0, 90, 180, 270)

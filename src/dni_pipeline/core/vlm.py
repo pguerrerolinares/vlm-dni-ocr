@@ -8,8 +8,8 @@ import torch
 from PIL import Image
 from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
 
-from . import DEFAULT_QWEN_SEARCH_PATHS
-from .logging_service import logging_service
+from .. import DEFAULT_QWEN_SEARCH_PATHS
+from ..logging_service import logging_service
 
 LOGGER = logging_service.get_logger(__name__)
 
