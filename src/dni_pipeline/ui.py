@@ -1,6 +1,7 @@
 """Gradio interface that wraps the DNI extraction workflow."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Dict
 
@@ -61,6 +62,7 @@ def extract_dni_ui(
     vlm_size: int = 512,
     max_new_tokens: int = 256,
     model_path: str = str(DEFAULT_QWEN_MODEL_PATH),
+    enable_card_crop: bool = True,
     api_endpoint: str = RELATIVE_API_PATH,
     request: "gr.Request | None" = None,
 ) -> str:
@@ -84,6 +86,7 @@ def extract_dni_ui(
                 "vlm_size": vlm_size,
                 "max_new_tokens": max_new_tokens,
                 "model_path": model_path,
+                "enable_card_crop": enable_card_crop,
             }
             with httpx.Client(timeout=HTTP_TIMEOUT) as client:
                 response = client.post(endpoint, files=files, params=params)
@@ -92,7 +95,12 @@ def extract_dni_ui(
                 "API call failed (%s): %s", response.status_code, response.text[:200]
             )
             return f"Error {response.status_code}: {response.text}"
-        return response.text
+        try:
+            payload = response.json()
+        except ValueError:
+            LOGGER.warning("API response was not JSON, returning raw text")
+            return response.text
+        return json.dumps(payload, ensure_ascii=False, indent=2)
     except httpx.HTTPError as exc:
         LOGGER.exception("HTTP request to %s failed: %s", endpoint, exc)
         return (
@@ -142,6 +150,10 @@ def create_ui() -> gr.Blocks:
                         value=str(DEFAULT_QWEN_MODEL_PATH),
                         label="Ruta/Repo del modelo Qwen",
                     )
+                    enable_card_crop = gr.Checkbox(
+                        label="Activar recorte de tarjeta (vista VLM zoom)",
+                        value=True,
+                    )
                     api_endpoint = gr.Textbox(
                         value=RELATIVE_API_PATH,
                         label="Endpoint API (FastAPI)",
@@ -160,6 +172,7 @@ def create_ui() -> gr.Blocks:
                 vlm_size,
                 max_new_tokens,
                 model_path,
+                enable_card_crop,
                 api_endpoint,
             ],
             outputs=json_output,

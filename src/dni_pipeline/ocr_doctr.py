@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import unicodedata
 from dataclasses import dataclass
 from io import BytesIO
 from typing import Iterable, List, Sequence, Tuple
@@ -23,6 +24,57 @@ class OcrItem:
     text: str
     bbox: Tuple[float, float, float, float]
     confidence: float
+
+
+@dataclass
+class OcrTextLine:
+    """OCR tokens grouped into natural reading lines."""
+
+    y: float
+    tokens: List[str]
+    norm_tokens: List[str]
+    x_centers: List[float]
+
+    @property
+    def text(self) -> str:
+        """Return the original text representation for the line."""
+        return " ".join(self.tokens).strip()
+
+    @property
+    def normalized_text(self) -> str:
+        """Return the accent-less uppercase representation to ease matching."""
+        joined = " ".join(token for token in self.norm_tokens if token)
+        return joined.strip()
+
+    @property
+    def x_mean(self) -> float:
+        """Average X position of the line (0-1 range)."""
+        if not self.x_centers:
+            return 0.5
+        return float(sum(self.x_centers) / len(self.x_centers))
+
+
+DEFAULT_OCR_MIN_CONFIDENCE = 0.3
+LINE_Y_TOLERANCE = 0.012
+
+
+def _strip_accents(text: str) -> str:
+    """Remove accents while keeping ASCII-friendly characters."""
+    normalized = unicodedata.normalize("NFD", text)
+    return "".join(char for char in normalized if unicodedata.category(char) != "Mn")
+
+
+def _normalize_token(text: str) -> str:
+    """Return an uppercase, accent-less token suited for keyword matching."""
+    cleaned = text.strip()
+    cleaned = cleaned.replace("\u00BA", "")
+    cleaned = cleaned.replace("\u00B0", "")
+    cleaned = cleaned.strip(":")
+    cleaned = cleaned.strip(".,;")
+    cleaned = cleaned.strip()
+    cleaned = _strip_accents(cleaned)
+    return cleaned.upper()
+
 
 
 _OCR_MODEL = None
@@ -98,25 +150,63 @@ def sort_ocr_items(ocr_items: Sequence[OcrItem]) -> List[OcrItem]:
 
 def build_ocr_block(
     ocr_items: Iterable[OcrItem],
-    min_confidence: float = 0.6,
+    min_confidence: float = DEFAULT_OCR_MIN_CONFIDENCE,
+    y_tolerance: float = LINE_Y_TOLERANCE,
 ) -> str:
     """Build the `[OCR]` text block for prompt injection."""
-    lines = []
-    for item in ocr_items:
+    lines = build_ocr_lines(ocr_items, min_confidence=min_confidence, y_tolerance=y_tolerance)
+    block_text = render_ocr_block(lines)
+    LOGGER.info("Built OCR block with %s lines (threshold %.2f)", len(lines), min_confidence)
+    return block_text
+
+
+def build_ocr_lines(
+    ocr_items: Iterable[OcrItem],
+    min_confidence: float = DEFAULT_OCR_MIN_CONFIDENCE,
+    y_tolerance: float = LINE_Y_TOLERANCE,
+) -> List[OcrTextLine]:
+    """Group tokens into text lines after applying the confidence filter."""
+    items = list(ocr_items)
+    lines: List[OcrTextLine] = []
+    kept_tokens = 0
+    for item in items:
         if item.confidence < min_confidence:
-            LOGGER.debug(
-                "Skipping OCR token below confidence threshold %.2f: '%s' (%.2f)",
-                min_confidence,
-                item.text,
-                item.confidence,
-            )
             continue
         text = item.text.strip()
         if not text:
             continue
-        lines.append(text)
-    block = "\n".join(lines)
-    block_text = f"[OCR]\n{block}\n[/OCR]" if block else "[OCR]\n[/OCR]"
-    LOGGER.info("Built OCR block with %s lines (threshold %.2f)", len(lines), min_confidence)
-    return block_text
+        normalized = _normalize_token(text)
+        if not normalized and not text:
+            continue
+        kept_tokens += 1
+        y_coord = item.bbox[1]
+        x_center = (item.bbox[0] + item.bbox[2]) / 2.0
+        if lines and abs(y_coord - lines[-1].y) <= y_tolerance:
+            lines[-1].tokens.append(text)
+            lines[-1].norm_tokens.append(normalized)
+            lines[-1].x_centers.append(x_center)
+        else:
+            lines.append(
+                OcrTextLine(
+                    y=y_coord,
+                    tokens=[text],
+                    norm_tokens=[normalized],
+                    x_centers=[x_center],
+                )
+            )
+    LOGGER.debug(
+        "OCR tokens before filtering: %d - kept %d tokens >= %.2f confidence",
+        len(items),
+        kept_tokens,
+        min_confidence,
+    )
+    return lines
 
+
+def render_ocr_block(ocr_lines: Sequence[OcrTextLine]) -> str:
+    """Render the `[OCR]` block from grouped lines."""
+    line_texts = [line.text for line in ocr_lines if line.text]
+    if not line_texts:
+        return "[OCR]\n[/OCR]"
+    content = "\n".join(line_texts)
+    return f"[OCR]\n{content}\n[/OCR]"

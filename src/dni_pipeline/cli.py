@@ -72,6 +72,13 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Unload models and free memory after processing.",
     )
+    parser.add_argument(
+        "--disable-card-crop",
+        dest="enable_card_crop",
+        action="store_false",
+        help="Desactiva el recorte automático del DNI antes de pasarlo al VLM.",
+    )
+    parser.set_defaults(enable_card_crop=True)
     return parser
 
 
@@ -107,6 +114,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             vlm_size=args.vlm_size,
             max_new_tokens=args.max_new_tokens,
             model_path=args.model_path,
+            enable_card_crop=args.enable_card_crop,
+            processed_image_dir=output_dir,
         )
         print(json.dumps(record, ensure_ascii=False))
         if output_dir:

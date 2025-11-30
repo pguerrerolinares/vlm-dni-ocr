@@ -101,12 +101,11 @@ def build_prompt_text(ocr_block: str) -> str:
     """Create the textual instructions passed alongside the image."""
     return (
         "Act as an expert data extraction assistant for Spanish National Identity Cards (DNI).\n"
-        "Carefully examine the provided image first. You also receive an OCR transcript that may contain mistakes.\n"
+        "Carefully examine the provided image first. You also receive a raw OCR transcript with high recall but noisy text.\n"
         "Follow these rules:\n"
-        "1. Always prioritise what you read in the image over the OCR block when they contradict each other.\n"
-        "2. Use the OCR block only as a hint to double-check difficult sections.\n"
-        "3. Never invent data. If a field cannot be confirmed with high confidence, output null.\n"
-        "4. Return exactly one valid JSON object with the following keys and no extra commentary:\n"
+        "1. Always prioritise what you read in the image over the OCR hints when they contradict each other.\n"
+        "2. Never invent data. If a field cannot be confirmed with high confidence, output null.\n"
+        "3. Return exactly one valid JSON object with the following keys and no extra commentary:\n"
         '{\n'
         '  "nombre": null,\n'
         '  "primer_apellido": null,\n'
@@ -117,9 +116,9 @@ def build_prompt_text(ocr_block: str) -> str:
         '  "sexo": null,\n'
         '  "nacionalidad": null\n'
         '}\n'
-        "5. Dates must use DD/MM/AAAA. If unsure about a date, return null for that field.\n"
-        "6. The DNI must be the 8-digit number plus the control letter. If incomplete or uncertain, return null.\n"
-        "7. If a name or surname is ambiguous or partly missing, use null instead of guessing.\n"
+        "4. Dates must use DD/MM/AAAA. If unsure about a date, return null for that field.\n"
+        "5. The DNI must be the 8-digit number plus the control letter. If incomplete or uncertain, return null.\n"
+        "6. If a name or surname is ambiguous or partly missing, use null instead of guessing.\n"
         "Respond with JSON only.\n\n"
         "Here is the OCR transcript (may contain errors):\n"
         f"{ocr_block}"
@@ -184,4 +183,55 @@ def run_qwen_vlm(
         skip_special_tokens=True,
     )[0].strip()
     LOGGER.info("Qwen generation completed, output length %s characters", len(generated_text))
+    return generated_text
+
+
+def run_qwen_cleaner(
+    clean_prompt: str,
+    max_new_tokens: int = 512,
+    model_id: str = "Qwen/Qwen3-VL-8B-Instruct",
+) -> str:
+    """Run Qwen3-VL-8B in text-only mode to clean and validate extracted fields."""
+    LOGGER.info("Running Qwen cleaner (max_new_tokens=%s)", max_new_tokens)
+    processor, model = load_qwen_model(model_id)
+    conversation = [
+        {
+            "role": "system",
+            "content": (
+                "You are a meticulous cleaner and validator for Spanish DNI data. "
+                "Always follow the provided rules and return valid JSON."
+            ),
+        },
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": clean_prompt},
+            ],
+        },
+    ]
+    chat_template = processor.apply_chat_template(
+        conversation,
+        add_generation_prompt=True,
+        tokenize=False,
+    )
+    LOGGER.debug("Cleaner chat template length: %s characters", len(chat_template))
+    processor_kwargs = {
+        "text": [chat_template],
+        "return_tensors": "pt",
+    }
+    inputs = processor(**processor_kwargs)
+    if torch.cuda.is_available():
+        inputs = inputs.to(model.device)
+        LOGGER.debug("Moved cleaner inputs to CUDA device %s", model.device)
+    prompt_length = inputs["input_ids"].shape[1]
+    generated_ids = model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=False,
+    )
+    generated_text = processor.batch_decode(
+        generated_ids[:, prompt_length:],
+        skip_special_tokens=True,
+    )[0].strip()
+    LOGGER.info("Cleaner generation completed, output length %s characters", len(generated_text))
     return generated_text

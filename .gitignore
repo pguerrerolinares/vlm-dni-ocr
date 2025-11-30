@@ -27,7 +27,7 @@ coverage.xml
 .vscode/
 
 # Local data and model artifacts
-data/output/
+data/
 models/
 Qwen3-VL-8B-Instruct/
 
